@@ -1,5 +1,6 @@
 // src/Pages/Home/Home.jsx
 import Banner from "./Banner";
+import ExtraSection from "./ExtraSection";
 import PopularContests from "./PopularContests";
 import WinnerSection from "./WinnerSection";
 
@@ -9,6 +10,7 @@ const Home = () => {
       <Banner />
       <PopularContests />
       <WinnerSection />
+      <ExtraSection />
       {/* later: Winners section + Extra section */}
     </div>
   );
