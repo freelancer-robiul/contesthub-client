@@ -8,6 +8,9 @@ import ContestDetails from "./Pages/Contests/ContestDetails";
 import NotFound from "./Pages/Error/NotFound";
 import PrivateRoute from "./Routes/PrivateRoute";
 
+import Login from "./Pages/Auth/Login";
+import Register from "./Pages/Auth/Register";
+
 import UserDashboardLayout from "./Layouts/UserDashboardLayout";
 import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
 import MyWinningContests from "./Pages/Dashboard/User/MyWinningContests";
@@ -33,6 +36,8 @@ function App() {
           {/* Public pages */}
           <Route path="/" element={<Home />} />
           <Route path="/all-contests" element={<AllContests />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           {/* Contest details (private) */}
           <Route
