@@ -11,6 +11,21 @@ import UserDashboardLayout from "./Layouts/UserDashboardLayout";
 import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
 import MyWinningContests from "./Pages/Dashboard/User/MyWinningContests";
 import MyProfile from "./Pages/Dashboard/User/MyProfile";
+import CreatorDashboardLayout from "./Layouts/CreatorDashboardLayout";
+import AddContest from "./Pages/Dashboard/Creator/AddContest";
+
+// Simple placeholders for creator dashboard (we'll replace later)
+const CreatorMyContestsPlaceholder = () => (
+  <div className="text-sm text-slate-300">
+    My created contests will appear here.
+  </div>
+);
+
+const CreatorSubmissionsPlaceholder = () => (
+  <div className="text-sm text-slate-300">
+    Submissions for your contests will appear here.
+  </div>
+);
 
 function App() {
   return (
@@ -19,6 +34,7 @@ function App() {
 
       <main className="flex-1 max-w-6xl mx-auto px-4 pb-10">
         <Routes>
+          {/* Public pages */}
           <Route path="/" element={<Home />} />
           <Route path="/all-contests" element={<AllContests />} />
 
@@ -47,6 +63,28 @@ function App() {
             <Route path="profile" element={<MyProfile />} />
           </Route>
 
+          {/* CREATOR DASHBOARD (private) */}
+          <Route
+            path="/creator-dashboard"
+            element={
+              <PrivateRoute>
+                <CreatorDashboardLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<AddContest />} />
+            <Route path="add-contest" element={<AddContest />} />
+            <Route
+              path="my-contests"
+              element={<CreatorMyContestsPlaceholder />}
+            />
+            <Route
+              path="submissions"
+              element={<CreatorSubmissionsPlaceholder />}
+            />
+          </Route>
+
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
