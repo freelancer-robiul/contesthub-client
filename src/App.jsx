@@ -11,6 +11,10 @@ import PrivateRoute from "./Routes/PrivateRoute";
 import Login from "./Pages/Auth/Login";
 import Register from "./Pages/Auth/Register";
 
+import Leaderboard from "./Pages/Leaderboard";
+import HowItWorks from "./Pages/Static/HowItWorks";
+import About from "./Pages/Static/About";
+
 import UserDashboardLayout from "./Layouts/UserDashboardLayout";
 import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
 import MyWinningContests from "./Pages/Dashboard/User/MyWinningContests";
@@ -25,10 +29,19 @@ import EditContest from "./Pages/Dashboard/Creator/EditContest";
 import AdminDashboardLayout from "./Layouts/AdminDashboardLayout";
 import ManageUsers from "./Pages/Dashboard/Admin/ManageUsers";
 import ManageContests from "./Pages/Dashboard/Admin/ManageContests";
+import { useTheme } from "./context/ThemeContext";
 
 function App() {
+  const { theme } = useTheme();
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div
+      className={`min-h-screen flex flex-col transition-colors ${
+        theme === "dark"
+          ? "bg-slate-950 text-slate-100"
+          : "bg-slate-50 text-slate-900"
+      }`}
+    >
       <Navbar />
 
       <main className="flex-1 max-w-6xl mx-auto px-4 pb-10">
@@ -36,6 +49,9 @@ function App() {
           {/* Public pages */}
           <Route path="/" element={<Home />} />
           <Route path="/all-contests" element={<AllContests />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -74,7 +90,7 @@ function App() {
             }
           >
             <Route index element={<AddContest />} />
-            <Route path="add-contest" element={<AddContest />} />
+            <Route path="add-contests" element={<AddContest />} />
             <Route path="my-contests" element={<MyCreatedContests />} />
             <Route path="submissions" element={<CreatorSubmissions />} />
             <Route
