@@ -1,3 +1,4 @@
+// src/App.jsx
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./Components/Navbar";
 import Footer from "./Components/Footer";
@@ -6,6 +7,10 @@ import AllContests from "./Pages/Contests/AllContests";
 import ContestDetails from "./Pages/Contests/ContestDetails";
 import NotFound from "./Pages/Error/NotFound";
 import PrivateRoute from "./Routes/PrivateRoute";
+import UserDashboardLayout from "./Layouts/UserDashboardLayout";
+import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
+import MyWinningContests from "./Pages/Dashboard/User/MyWinningContests";
+import MyProfile from "./Pages/Dashboard/User/MyProfile";
 
 function App() {
   return (
@@ -17,7 +22,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/all-contests" element={<AllContests />} />
 
-          {/* Contest Details – private route */}
+          {/* Contest details (private) */}
           <Route
             path="/contests/:id"
             element={
@@ -27,7 +32,21 @@ function App() {
             }
           />
 
-          {/* 404 */}
+          {/* USER DASHBOARD (private) */}
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <UserDashboardLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<MyParticipatedContests />} />
+            <Route path="participated" element={<MyParticipatedContests />} />
+            <Route path="winnings" element={<MyWinningContests />} />
+            <Route path="profile" element={<MyProfile />} />
+          </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
