@@ -7,25 +7,21 @@ import AllContests from "./Pages/Contests/AllContests";
 import ContestDetails from "./Pages/Contests/ContestDetails";
 import NotFound from "./Pages/Error/NotFound";
 import PrivateRoute from "./Routes/PrivateRoute";
+
 import UserDashboardLayout from "./Layouts/UserDashboardLayout";
 import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
 import MyWinningContests from "./Pages/Dashboard/User/MyWinningContests";
 import MyProfile from "./Pages/Dashboard/User/MyProfile";
+
 import CreatorDashboardLayout from "./Layouts/CreatorDashboardLayout";
 import AddContest from "./Pages/Dashboard/Creator/AddContest";
+import MyCreatedContests from "./Pages/Dashboard/Creator/MyCreatedContests";
+import CreatorSubmissions from "./Pages/Dashboard/Creator/CreatorSubmissions";
+import EditContest from "./Pages/Dashboard/Creator/EditContest";
 
-// Simple placeholders for creator dashboard (we'll replace later)
-const CreatorMyContestsPlaceholder = () => (
-  <div className="text-sm text-slate-300">
-    My created contests will appear here.
-  </div>
-);
-
-const CreatorSubmissionsPlaceholder = () => (
-  <div className="text-sm text-slate-300">
-    Submissions for your contests will appear here.
-  </div>
-);
+import AdminDashboardLayout from "./Layouts/AdminDashboardLayout";
+import ManageUsers from "./Pages/Dashboard/Admin/ManageUsers";
+import ManageContests from "./Pages/Dashboard/Admin/ManageContests";
 
 function App() {
   return (
@@ -74,14 +70,27 @@ function App() {
           >
             <Route index element={<AddContest />} />
             <Route path="add-contest" element={<AddContest />} />
+            <Route path="my-contests" element={<MyCreatedContests />} />
+            <Route path="submissions" element={<CreatorSubmissions />} />
             <Route
-              path="my-contests"
-              element={<CreatorMyContestsPlaceholder />}
+              path="submissions/:contestId"
+              element={<CreatorSubmissions />}
             />
-            <Route
-              path="submissions"
-              element={<CreatorSubmissionsPlaceholder />}
-            />
+            <Route path="edit/:contestId" element={<EditContest />} />
+          </Route>
+
+          {/* ADMIN DASHBOARD (private) */}
+          <Route
+            path="/admin-dashboard"
+            element={
+              <PrivateRoute>
+                <AdminDashboardLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<ManageUsers />} />
+            <Route path="users" element={<ManageUsers />} />
+            <Route path="contests" element={<ManageContests />} />
           </Route>
 
           {/* 404 */}
