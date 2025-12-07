@@ -7,13 +7,7 @@ import AllContests from "./Pages/Contests/AllContests";
 import ContestDetails from "./Pages/Contests/ContestDetails";
 import NotFound from "./Pages/Error/NotFound";
 import PrivateRoute from "./Routes/PrivateRoute";
-
-import Login from "./Pages/Auth/Login";
-import Register from "./Pages/Auth/Register";
-
-import Leaderboard from "./Pages/Leaderboard";
-import HowItWorks from "./Pages/Static/HowItWorks";
-import About from "./Pages/Static/About";
+import AdminRoute from "./Routes/AdminRoute";
 
 import UserDashboardLayout from "./Layouts/UserDashboardLayout";
 import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
@@ -29,19 +23,13 @@ import EditContest from "./Pages/Dashboard/Creator/EditContest";
 import AdminDashboardLayout from "./Layouts/AdminDashboardLayout";
 import ManageUsers from "./Pages/Dashboard/Admin/ManageUsers";
 import ManageContests from "./Pages/Dashboard/Admin/ManageContests";
-import { useTheme } from "./context/ThemeContext";
+
+import Login from "./Pages/Auth/Login";
+import Register from "./Pages/Auth/Register";
 
 function App() {
-  const { theme } = useTheme();
-
   return (
-    <div
-      className={`min-h-screen flex flex-col transition-colors ${
-        theme === "dark"
-          ? "bg-slate-950 text-slate-100"
-          : "bg-slate-50 text-slate-900"
-      }`}
-    >
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <Navbar />
 
       <main className="flex-1 max-w-6xl mx-auto px-4 pb-10">
@@ -49,9 +37,6 @@ function App() {
           {/* Public pages */}
           <Route path="/" element={<Home />} />
           <Route path="/all-contests" element={<AllContests />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -90,7 +75,7 @@ function App() {
             }
           >
             <Route index element={<AddContest />} />
-            <Route path="add-contests" element={<AddContest />} />
+            <Route path="add-contest" element={<AddContest />} />
             <Route path="my-contests" element={<MyCreatedContests />} />
             <Route path="submissions" element={<CreatorSubmissions />} />
             <Route
@@ -100,12 +85,14 @@ function App() {
             <Route path="edit/:contestId" element={<EditContest />} />
           </Route>
 
-          {/* ADMIN DASHBOARD (private) */}
+          {/* ADMIN DASHBOARD (admin private) */}
           <Route
             path="/admin-dashboard"
             element={
               <PrivateRoute>
-                <AdminDashboardLayout />
+                <AdminRoute>
+                  <AdminDashboardLayout />
+                </AdminRoute>
               </PrivateRoute>
             }
           >

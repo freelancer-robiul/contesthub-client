@@ -1,156 +1,143 @@
 // src/Pages/Dashboard/Admin/ManageUsers.jsx
-import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../../../api/axios";
+import toast from "react-hot-toast";
 
-const makeDummyUsers = () => {
-  const base = [
-    { id: "u1", name: "Arif Hossain", email: "arif@example.com", role: "user" },
-    {
-      id: "u2",
-      name: "Mitu Akter",
-      email: "mitu@example.com",
-      role: "creator",
-    },
-    {
-      id: "u3",
-      name: "Sajid Hasan",
-      email: "sajid@example.com",
-      role: "admin",
-    },
-  ];
-  // extra users for pagination demo
-  for (let i = 4; i <= 25; i++) {
-    base.push({
-      id: `u${i}`,
-      name: `User ${i}`,
-      email: `user${i}@example.com`,
-      role: i % 3 === 0 ? "admin" : i % 2 === 0 ? "creator" : "user",
-    });
-  }
-  return base;
+const fetchUsers = async () => {
+  const res = await api.get("/admin/users");
+  return res.data;
 };
 
-const initialUsers = makeDummyUsers();
-
 const ManageUsers = () => {
-  const [users, setUsers] = useState(initialUsers);
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const queryClient = useQueryClient();
 
-  const totalPages = Math.ceil(users.length / pageSize);
+  const {
+    data: users = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: fetchUsers,
+  });
 
-  const pagedUsers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return users.slice(start, start + pageSize);
-  }, [users, currentPage]);
+  const { mutateAsync: changeRole, isPending } = useMutation({
+    mutationFn: async ({ userId, role }) => {
+      const res = await api.patch(`/admin/users/${userId}/role`, { role });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "Role updated");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (err) => {
+      const msg =
+        err?.response?.data?.message || "Failed to update role. Try again.";
+      toast.error(msg);
+    },
+  });
 
-  const updateRole = (id, newRole) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
-    );
-  };
-
-  const goToPage = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
+  const handleRoleChange = async (userId, role) => {
+    await changeRole({ userId, role });
   };
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-2 text-slate-50">Manage Users</h2>
+      <h2 className="text-lg font-semibold mb-2 text-slate-50">Manage users</h2>
       <p className="text-xs text-slate-400 mb-4">
-        Change user roles as needed. Pagination shows 10 users per page.
+        Promote creators, assign admins and manage access across the platform.
       </p>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 text-slate-400">
-              <th className="py-2 px-3">Name</th>
-              <th className="py-2 px-3">Email</th>
-              <th className="py-2 px-3">Role</th>
-              <th className="py-2 px-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagedUsers.map((user) => (
-              <tr key={user.id} className="border-b border-slate-900/60">
-                <td className="py-2 px-3 text-slate-100">{user.name}</td>
-                <td className="py-2 px-3 text-slate-300">{user.email}</td>
-                <td className="py-2 px-3 text-slate-300 capitalize">
-                  {user.role}
-                </td>
-                <td className="py-2 px-3 text-right space-x-2">
-                  <button
-                    onClick={() => updateRole(user.id, "user")}
-                    className="px-2 py-1 rounded bg-slate-800 text-xs hover:bg-slate-700"
-                  >
-                    User
-                  </button>
-                  <button
-                    onClick={() => updateRole(user.id, "creator")}
-                    className="px-2 py-1 rounded bg-indigo-500 text-xs text-slate-950 hover:bg-indigo-600"
-                  >
-                    Creator
-                  </button>
-                  <button
-                    onClick={() => updateRole(user.id, "admin")}
-                    className="px-2 py-1 rounded bg-red-500 text-xs text-slate-950 hover:bg-red-600"
-                  >
-                    Admin
-                  </button>
-                </td>
-              </tr>
-            ))}
+      {isLoading && (
+        <div className="py-6 text-sm text-slate-300">Loading users...</div>
+      )}
 
-            {users.length === 0 && (
-              <tr>
-                <td colSpan="4" className="py-4 text-center text-slate-400">
-                  No users found!
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination controls */}
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-300">
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-2 py-1 rounded border border-slate-700 disabled:opacity-50"
-          >
-            Prev
-          </button>
-          {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(
-            (page) => (
-              <button
-                key={page}
-                onClick={() => goToPage(page)}
-                className={`px-2 py-1 rounded border text-xs ${
-                  currentPage === page
-                    ? "border-indigo-500 bg-indigo-500 text-slate-950"
-                    : "border-slate-700"
-                }`}
-              >
-                {page}
-              </button>
-            )
-          )}
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-2 py-1 rounded border border-slate-700 disabled:opacity-50"
-          >
-            Next
-          </button>
+      {isError && (
+        <div className="py-6 text-sm text-red-300">
+          Failed to load users: {error?.message}
         </div>
-      </div>
+      )}
+
+      {!isLoading && !isError && users.length === 0 && (
+        <div className="py-6 text-sm text-slate-400">No users found yet.</div>
+      )}
+
+      {!isLoading && !isError && users.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+          <table className="min-w-full text-xs">
+            <thead className="bg-slate-900/80 text-slate-300">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">User</th>
+                <th className="px-3 py-2 text-left font-medium">Email</th>
+                <th className="px-3 py-2 text-left font-medium">Role</th>
+                <th className="px-3 py-2 text-right font-medium">
+                  Change role
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr
+                  key={u._id}
+                  className="border-t border-slate-800/80 hover:bg-slate-900/50"
+                >
+                  <td className="px-3 py-2 align-top">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={
+                          u.photoURL ||
+                          "https://i.ibb.co/9GZ2ZqT/default-avatar.png"
+                        }
+                        alt={u.name}
+                        className="w-7 h-7 rounded-full object-cover"
+                      />
+                      <div>
+                        <div className="text-slate-50 text-xs font-medium">
+                          {u.name}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 align-top text-slate-300">
+                    {u.email}
+                  </td>
+                  <td className="px-3 py-2 align-top text-slate-200 capitalize">
+                    {u.role}
+                  </td>
+                  <td className="px-3 py-2 align-top text-right">
+                    <div className="inline-flex gap-1">
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleRoleChange(u._id, "user")}
+                        className="px-2 py-1 rounded-full border border-slate-700 text-[11px] text-slate-200 hover:bg-slate-800"
+                      >
+                        User
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleRoleChange(u._id, "creator")}
+                        className="px-2 py-1 rounded-full border border-indigo-500 text-[11px] text-indigo-200 hover:bg-indigo-500/10"
+                      >
+                        Creator
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleRoleChange(u._id, "admin")}
+                        className="px-2 py-1 rounded-full border border-emerald-500 text-[11px] text-emerald-200 hover:bg-emerald-500/10"
+                      >
+                        Admin
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
