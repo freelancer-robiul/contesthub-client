@@ -1,10 +1,18 @@
-// src/Pages/Auth/Register.jsx
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
 
 const Register = () => {
   const [authError, setAuthError] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+
+  const from = location.state?.from?.pathname || "/";
+
   const {
     register,
     handleSubmit,
@@ -20,12 +28,36 @@ const Register = () => {
 
   const onSubmit = async (data) => {
     setAuthError("");
+
     try {
-      // TODO: later call backend/Firebase registration
-      console.log("Register form data:", data);
-      // if server sends error -> setAuthError("Email is already in use");
+      const res = await axios.post(
+        "http://localhost:5001/api/v1/auth/register",
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast.success("Registration successful!");
+
+      const { user, token } = res.data;
+
+      if (user && token) {
+        login(user, token);
+      }
+
+      navigate(from, { replace: true });
     } catch (err) {
-      setAuthError("Something went wrong. Please try again.");
+      console.error("Register error:", err?.response?.data || err);
+
+      const msg =
+        err?.response?.data?.message ||
+        "Registration failed. Please try again.";
+
+      setAuthError(msg);
+      toast.error(msg);
     }
   };
 
@@ -39,12 +71,14 @@ const Register = () => {
           Sign up to host contests, join challenges and track your wins.
         </p>
 
+        {/* Error message */}
         {authError && (
           <div className="mb-3 rounded-xl bg-red-500/10 border border-red-500/60 px-3 py-2 text-xs text-red-200">
             {authError}
           </div>
         )}
 
+        {/* FORM */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-sm">
           {/* Name */}
           <div>
@@ -55,7 +89,7 @@ const Register = () => {
               type="text"
               {...register("name", { required: "Name is required" })}
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="Your name"
+              placeholder="Your full name"
             />
             {errors.name && (
               <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
@@ -73,7 +107,7 @@ const Register = () => {
                 required: "Email is required",
                 pattern: {
                   value: /\S+@\S+\.\S+/,
-                  message: "Please enter a valid email address",
+                  message: "Enter a valid email",
                 },
               })}
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
@@ -97,11 +131,11 @@ const Register = () => {
                 required: "Password is required",
                 minLength: {
                   value: 6,
-                  message: "Password must be at least 6 characters",
+                  message: "Password must be at least 6 characters long",
                 },
               })}
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="Create a password"
+              placeholder="••••••••"
             />
             {errors.password && (
               <p className="mt-1 text-xs text-red-400">
@@ -121,7 +155,7 @@ const Register = () => {
                 required: "Photo URL is required",
               })}
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="Link to your profile picture"
+              placeholder="https://example.com/photo.jpg"
             />
             {errors.photoURL && (
               <p className="mt-1 text-xs text-red-400">
@@ -130,6 +164,7 @@ const Register = () => {
             )}
           </div>
 
+          {/* Submit button */}
           <button
             type="submit"
             disabled={isSubmitting}

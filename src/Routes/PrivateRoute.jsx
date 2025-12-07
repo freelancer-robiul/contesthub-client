@@ -1,17 +1,20 @@
 // src/Routes/PrivateRoute.jsx
 import { Navigate, useLocation } from "react-router-dom";
-
-// TODO: later replace this with real auth (context + JWT)
-const fakeUser = null;
-// const fakeUser = { _id: "123", name: "Demo User" };
+import { useAuth } from "../context/AuthContext";
 
 const PrivateRoute = ({ children }) => {
+  const { user, loading } = useAuth();
   const location = useLocation();
 
-  const user = fakeUser;
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-slate-300">
+        Checking authentication...
+      </div>
+    );
+  }
 
   if (!user) {
-    // not logged in → go to login page, remember where user wanted to go
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

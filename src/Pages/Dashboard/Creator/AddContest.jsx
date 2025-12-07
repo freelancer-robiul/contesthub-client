@@ -1,23 +1,20 @@
 // src/Pages/Dashboard/Creator/AddContest.jsx
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
-const contestTypes = [
-  { value: "image-design", label: "Image Design" },
-  { value: "article-writing", label: "Article Writing" },
-  { value: "business-idea", label: "Business Ideas" },
-  { value: "gaming-review", label: "Gaming Reviews" },
-];
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../../../api/axios";
+import toast from "react-hot-toast";
+import { useAuth } from "../../../context/AuthContext";
 
 const AddContest = () => {
-  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  const [deadline, setDeadline] = useState(new Date());
 
   const {
     register,
     handleSubmit,
-    control,
     reset,
     formState: { errors },
   } = useForm({
@@ -27,213 +24,267 @@ const AddContest = () => {
       description: "",
       price: "",
       prizeMoney: "",
-      taskInstruction: "",
-      contestType: "",
-      deadline: null,
+      taskInstructions: "",
+      contestType: "image-design",
+      tags: "",
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  // React Query mutation -> POST /api/v1/contests
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: async (formData) => {
+      const payload = {
+        name: formData.name,
+        image: formData.image,
+        description: formData.description,
+        price: Number(formData.price),
+        prizeMoney: Number(formData.prizeMoney),
+        taskInstructions: formData.taskInstructions,
+        contestType: formData.contestType,
+        deadline: deadline.toISOString(),
+        // comma separated tags -> array
+        tags:
+          formData.tags
+            ?.split(",")
+            .map((t) => t.trim())
+            .filter(Boolean) || [],
+      };
+
+      const res = await api.post("/contests", payload);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success("Contest created successfully. Waiting for approval.");
+      // All contests list refresh
+      queryClient.invalidateQueries({ queryKey: ["contests"] });
+    },
+    onError: (error) => {
+      const msg =
+        error?.response?.data?.message ||
+        "Failed to create contest. Please try again.";
+      toast.error(msg);
     },
   });
 
   const onSubmit = async (data) => {
-    setSubmitting(true);
-    try {
-      // TODO: later send to backend API
-      console.log("New contest data:", data);
-      // here you will show toast/sweetalert on success
-      reset();
-    } catch (err) {
-      console.error("Failed to create contest", err);
-    } finally {
-      setSubmitting(false);
+    if (!user) {
+      toast.error("You must be logged in to add contests.");
+      return;
     }
+
+    if (user.role !== "creator" && user.role !== "admin") {
+      toast.error("Only creators or admins can add contests.");
+      return;
+    }
+
+    if (!deadline) {
+      toast.error("Please select a deadline.");
+      return;
+    }
+
+    await mutateAsync(data);
+    reset();
+    setDeadline(new Date());
   };
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-50 mb-1">
-        Add New Contest
+      <h2 className="text-lg font-semibold mb-2 text-slate-50">
+        Add new contest
       </h2>
       <p className="text-xs text-slate-400 mb-4">
-        Fill in the details below to launch a new contest. You can edit or
-        delete it while it is still pending approval.
+        Fill out the form to publish a new contest. Admin will review and
+        approve it before it becomes public.
       </p>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-4 md:grid-cols-2 text-sm"
+        className="space-y-4 text-sm max-w-xl"
       >
-        {/* Name */}
-        <div className="md:col-span-2">
+        {/* Contest Name */}
+        <div>
           <label className="block text-xs text-slate-400 mb-1">
             Contest Name
           </label>
           <input
             type="text"
             {...register("name", { required: "Contest name is required" })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-            placeholder="e.g. Fintech Logo Design Sprint"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+            placeholder="Creative logo design for a gaming brand"
           />
           {errors.name && (
-            <p className="text-xs text-red-400 mt-1">{errors.name.message}</p>
+            <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
           )}
         </div>
 
         {/* Image URL */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Image URL</label>
+          <label className="block text-xs text-slate-400 mb-1">
+            Banner Image URL
+          </label>
           <input
             type="text"
-            {...register("image", { required: "Image URL is required" })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-            placeholder="Link to contest banner image"
+            {...register("image", {
+              required: "Image URL is required",
+            })}
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+            placeholder="https://example.com/contest-banner.jpg"
           />
           {errors.image && (
-            <p className="text-xs text-red-400 mt-1">{errors.image.message}</p>
-          )}
-        </div>
-
-        {/* Contest Type */}
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">
-            Contest Type
-          </label>
-          <select
-            {...register("contestType", {
-              required: "Contest type is required",
-            })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-          >
-            <option value="">Select a type</option>
-            {contestTypes.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-          {errors.contestType && (
-            <p className="text-xs text-red-400 mt-1">
-              {errors.contestType.message}
-            </p>
-          )}
-        </div>
-
-        {/* Price */}
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">
-            Entry Fee (Price)
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            {...register("price", {
-              required: "Entry fee is required",
-              min: { value: 0, message: "Price cannot be negative" },
-            })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-            placeholder="e.g. 10"
-          />
-          {errors.price && (
-            <p className="text-xs text-red-400 mt-1">{errors.price.message}</p>
-          )}
-        </div>
-
-        {/* Prize Money */}
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">
-            Prize Money
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            {...register("prizeMoney", {
-              required: "Prize money is required",
-              min: { value: 1, message: "Prize must be at least 1" },
-            })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-            placeholder="e.g. 150"
-          />
-          {errors.prizeMoney && (
-            <p className="text-xs text-red-400 mt-1">
-              {errors.prizeMoney.message}
-            </p>
-          )}
-        </div>
-
-        {/* Deadline (react-datepicker) */}
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Deadline</label>
-          <Controller
-            control={control}
-            name="deadline"
-            rules={{ required: "Deadline is required" }}
-            render={({ field }) => (
-              <DatePicker
-                selected={field.value}
-                onChange={(date) => field.onChange(date)}
-                showTimeSelect
-                dateFormat="dd MMM yyyy, h:mm aa"
-                minDate={new Date()}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-                placeholderText="Select deadline date & time"
-              />
-            )}
-          />
-          {errors.deadline && (
-            <p className="text-xs text-red-400 mt-1">
-              {errors.deadline.message}
-            </p>
+            <p className="mt-1 text-xs text-red-400">{errors.image.message}</p>
           )}
         </div>
 
         {/* Description */}
-        <div className="md:col-span-2">
+        <div>
           <label className="block text-xs text-slate-400 mb-1">
-            Short Description
+            Description
           </label>
           <textarea
             rows={3}
             {...register("description", {
               required: "Description is required",
             })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-            placeholder="Briefly describe what this contest is about."
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400 resize-none"
+            placeholder="Describe what you are looking for and what makes a submission successful."
           />
           {errors.description && (
-            <p className="text-xs text-red-400 mt-1">
+            <p className="mt-1 text-xs text-red-400">
               {errors.description.message}
             </p>
           )}
         </div>
 
-        {/* Task Instruction */}
-        <div className="md:col-span-2">
+        {/* Price & Prize */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Entry fee (USD)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              {...register("price", {
+                required: "Entry fee is required",
+                min: { value: 0, message: "Entry fee cannot be negative" },
+              })}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+              placeholder="5"
+            />
+            {errors.price && (
+              <p className="mt-1 text-xs text-red-400">
+                {errors.price.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Prize money (USD)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              {...register("prizeMoney", {
+                required: "Prize money is required",
+                min: { value: 1, message: "Prize money must be at least 1" },
+              })}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+              placeholder="50"
+            />
+            {errors.prizeMoney && (
+              <p className="mt-1 text-xs text-red-400">
+                {errors.prizeMoney.message}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Task Instructions */}
+        <div>
           <label className="block text-xs text-slate-400 mb-1">
-            Task Instruction
+            Task Instructions
           </label>
           <textarea
             rows={4}
-            {...register("taskInstruction", {
-              required: "Task instruction is required",
+            {...register("taskInstructions", {
+              required: "Task instructions are required",
             })}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-emerald-400"
-            placeholder="Explain exactly what participants need to deliver. You can include file formats, word limits or any other rules."
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400 resize-none"
+            placeholder="Explain what exactly participants must do, format of submission, and any important rules."
           />
-          {errors.taskInstruction && (
-            <p className="text-xs text-red-400 mt-1">
-              {errors.taskInstruction.message}
+          {errors.taskInstructions && (
+            <p className="mt-1 text-xs text-red-400">
+              {errors.taskInstructions.message}
             </p>
           )}
         </div>
 
-        {/* Submit button */}
-        <div className="md:col-span-2 flex justify-end">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed transition"
-          >
-            {submitting ? "Creating contest..." : "Create Contest"}
-          </button>
+        {/* Contest type & Tags */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Contest Type
+            </label>
+            <select
+              {...register("contestType", {
+                required: "Contest type is required",
+              })}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+            >
+              <option value="image-design">Image Design</option>
+              <option value="article-writing">Article Writing</option>
+              <option value="business-idea">Business Idea</option>
+              <option value="game-review">Game Review</option>
+              <option value="other">Other</option>
+            </select>
+            {errors.contestType && (
+              <p className="mt-1 text-xs text-red-400">
+                {errors.contestType.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Tags (comma separated)
+            </label>
+            <input
+              type="text"
+              {...register("tags")}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+              placeholder="logo, esports, minimal"
+            />
+          </div>
         </div>
+
+        {/* Deadline */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Deadline</label>
+          <div className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus-within:border-indigo-400">
+            <DatePicker
+              selected={deadline}
+              onChange={(date) => setDeadline(date || new Date())}
+              showTimeSelect
+              timeFormat="HH:mm"
+              timeIntervals={30}
+              dateFormat="MMM d, yyyy h:mm aa"
+              className="bg-transparent outline-none w-full text-sm"
+              minDate={new Date()}
+            />
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-full bg-indigo-500 hover:bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-slate-950 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isPending ? "Creating contest..." : "Create contest"}
+        </button>
       </form>
     </div>
   );

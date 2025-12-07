@@ -1,10 +1,23 @@
 // src/Pages/Auth/Login.jsx
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { api } from "../../api/axios";
+import { useAuth } from "../../context/AuthContext";
+
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { firebaseApp } from "../../firebase/firebase.config";
+
+const auth = getAuth(firebaseApp);
+const provider = new GoogleAuthProvider();
 
 const Login = () => {
   const [authError, setAuthError] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
+
   const {
     register,
     handleSubmit,
@@ -16,20 +29,52 @@ const Login = () => {
     },
   });
 
+  // ---------------------------
+  // EMAIL / PASSWORD → BACKEND
+  // ---------------------------
   const onSubmit = async (data) => {
     setAuthError("");
     try {
-      // TODO: later call backend/Firebase login
-      console.log("Login form data:", data);
-      // if login fails from server, setAuthError("Invalid email or password");
+      const res = await api.post("/auth/login", data);
+      // backend JWT + user
+      login(res.data.user, res.data.token);
+      navigate(from, { replace: true });
     } catch (err) {
-      setAuthError("Something went wrong. Please try again.");
+      const msg =
+        err?.response?.data?.message ||
+        "Login failed. Please check your credentials.";
+      setAuthError(msg);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    // TODO: later integrate Firebase Google Auth
-    console.log("Google sign-in clicked");
+  // ---------------------------
+  // GOOGLE SIGN-IN → PURE FIREBASE
+  // ---------------------------
+  const handleGoogleSignIn = async () => {
+    setAuthError("");
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Firebase থেকে পাওয়া ডাটাকে আমাদের AuthContext এর format এ convert করি
+      const userData = {
+        _id: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email?.split("@")[0],
+        email: firebaseUser.email,
+        photoURL: firebaseUser.photoURL,
+        role: "user", // default – চাইলে পরে backend দিয়ে update করতে পারো
+      };
+
+      // এখানে আমরা backend JWT ব্যবহার না করে,
+      // একটা dummy token string ব্যবহার করছি শুধু লোকাল storage consistency এর জন্য।
+      const dummyToken = "firebase-google-token";
+
+      login(userData, dummyToken);
+      navigate(from, { replace: true });
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      setAuthError("Google sign-in failed. Please try again.");
+    }
   };
 
   return (
@@ -42,15 +87,14 @@ const Login = () => {
           Log in to continue joining contests and tracking your progress.
         </p>
 
-        {/* Error from server */}
         {authError && (
           <div className="mb-3 rounded-xl bg-red-500/10 border border-red-500/60 px-3 py-2 text-xs text-red-200">
             {authError}
           </div>
         )}
 
+        {/* EMAIL/PASSWORD LOGIN */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-sm">
-          {/* Email */}
           <div>
             <label className="block text-xs text-slate-400 mb-1">
               Email address
@@ -74,7 +118,6 @@ const Login = () => {
             )}
           </div>
 
-          {/* Password */}
           <div>
             <label className="block text-xs text-slate-400 mb-1">
               Password
@@ -116,7 +159,7 @@ const Login = () => {
           <div className="h-px flex-1 bg-slate-800" />
         </div>
 
-        {/* Google sign-in */}
+        {/* GOOGLE SIGN-IN BUTTON */}
         <button
           type="button"
           onClick={handleGoogleSignIn}
