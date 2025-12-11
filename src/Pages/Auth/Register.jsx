@@ -1,185 +1,126 @@
-import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+// src/Pages/Auth/Register.jsx
 import { useForm } from "react-hook-form";
-import axios from "axios";
-import toast from "react-hot-toast";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 
 const Register = () => {
-  const [authError, setAuthError] = useState("");
+  const { register, handleSubmit, formState } = useForm();
+  const { errors } = formState;
+  const [serverError, setServerError] = useState("");
   const navigate = useNavigate();
-  const location = useLocation();
   const { login } = useAuth();
 
-  const from = location.state?.from?.pathname || "/";
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      photoURL: "",
-    },
-  });
-
   const onSubmit = async (data) => {
-    setAuthError("");
+    setServerError("");
 
     try {
-      const res = await axios.post(
-        "http://localhost:5001/api/v1/auth/register",
-        data,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await api.post("/auth/register", {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        photoURL: data.photoURL,
+      });
 
-      toast.success("Registration successful!");
-
+      // server থেকে user + token আসবে
       const { user, token } = res.data;
+      login(user, token);
 
-      if (user && token) {
-        login(user, token);
-      }
-
-      navigate(from, { replace: true });
+      navigate("/dashboard");
     } catch (err) {
-      console.error("Register error:", err?.response?.data || err);
-
-      const msg =
-        err?.response?.data?.message ||
-        "Registration failed. Please try again.";
-
-      setAuthError(msg);
-      toast.error(msg);
+      const msg = err.response?.data?.message || "Registration failed";
+      setServerError(msg);
     }
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950/80 p-6 shadow-xl">
-        <h1 className="text-2xl font-semibold text-slate-50 mb-1 text-center">
+    <div className="flex justify-center py-10">
+      <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950/70 p-6 shadow-xl">
+        <h1 className="text-xl font-semibold mb-1 text-slate-50">
           Create an account
         </h1>
-        <p className="text-sm text-slate-400 text-center mb-5">
+        <p className="text-xs text-slate-400 mb-6">
           Sign up to host contests, join challenges and track your wins.
         </p>
 
-        {/* Error message */}
-        {authError && (
-          <div className="mb-3 rounded-xl bg-red-500/10 border border-red-500/60 px-3 py-2 text-xs text-red-200">
-            {authError}
+        {serverError && (
+          <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/70 px-3 py-2 text-xs text-red-200">
+            {serverError}
           </div>
         )}
 
-        {/* FORM */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-sm">
+        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
           {/* Name */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">
-              Full name
-            </label>
+          <div className="space-y-1 text-xs">
+            <label className="text-slate-300">Full name</label>
             <input
               type="text"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
               {...register("name", { required: "Name is required" })}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="Your full name"
             />
             {errors.name && (
-              <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
+              <p className="text-[11px] text-red-400">{errors.name.message}</p>
             )}
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">
-              Email address
-            </label>
+          <div className="space-y-1 text-xs">
+            <label className="text-slate-300">Email address</label>
             <input
               type="email"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
               {...register("email", {
                 required: "Email is required",
-                pattern: {
-                  value: /\S+@\S+\.\S+/,
-                  message: "Enter a valid email",
-                },
               })}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="you@example.com"
             />
             {errors.email && (
-              <p className="mt-1 text-xs text-red-400">
-                {errors.email.message}
-              </p>
+              <p className="text-[11px] text-red-400">{errors.email.message}</p>
             )}
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">
-              Password
-            </label>
+          <div className="space-y-1 text-xs">
+            <label className="text-slate-300">Password</label>
             <input
               type="password"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
               {...register("password", {
                 required: "Password is required",
                 minLength: {
                   value: 6,
-                  message: "Password must be at least 6 characters long",
+                  message: "Minimum 6 characters",
                 },
               })}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="••••••••"
             />
             {errors.password && (
-              <p className="mt-1 text-xs text-red-400">
+              <p className="text-[11px] text-red-400">
                 {errors.password.message}
               </p>
             )}
           </div>
 
           {/* Photo URL */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">
-              Photo URL
-            </label>
+          <div className="space-y-1 text-xs">
+            <label className="text-slate-300">Photo URL</label>
             <input
-              type="text"
-              {...register("photoURL", {
-                required: "Photo URL is required",
-              })}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
-              placeholder="https://example.com/photo.jpg"
+              type="url"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+              {...register("photoURL")}
             />
-            {errors.photoURL && (
-              <p className="mt-1 text-xs text-red-400">
-                {errors.photoURL.message}
-              </p>
-            )}
           </div>
 
-          {/* Submit button */}
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-full bg-indigo-500 hover:bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-slate-950 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            className="mt-2 w-full rounded-full bg-indigo-500 px-4 py-2.5 text-xs font-semibold text-slate-950 hover:bg-indigo-600"
           >
-            {isSubmitting ? "Creating account..." : "Sign up"}
+            Sign up
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-slate-400 text-center">
+        <p className="mt-4 text-[11px] text-slate-400">
           Already have an account?{" "}
-          <Link
-            to="/login"
-            className="text-indigo-400 hover:text-indigo-300 font-medium"
-          >
+          <Link to="/login" className="text-indigo-300 hover:underline">
             Log in
           </Link>
         </p>

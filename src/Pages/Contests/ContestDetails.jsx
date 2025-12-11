@@ -1,180 +1,149 @@
 // src/Pages/Contests/ContestDetails.jsx
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../api/axios";
-
-const fetchContest = async ({ queryKey }) => {
-  const [_key, id] = queryKey;
-  const res = await api.get(`/contests/${id}`);
-  return res.data;
-};
+import api from "../../api/axios";
+import Swal from "sweetalert2";
 
 const ContestDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const {
     data: contest,
     isLoading,
     isError,
-    error,
   } = useQuery({
     queryKey: ["contest", id],
-    queryFn: fetchContest,
+    queryFn: async () => {
+      const res = await api.get(`/contests/${id}`);
+      return res.data;
+    },
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-slate-300">
+      <div className="py-16 text-center text-slate-300">
         Loading contest details...
       </div>
     );
   }
 
-  if (isError) {
+  if (isError || !contest) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-red-300 text-sm">
-        Failed to load contest: {error.message}
+      <div className="py-16 text-center text-red-400">
+        Failed to load contest.
       </div>
     );
   }
 
-  if (!contest) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center text-slate-400">
-        Contest not found.
-      </div>
-    );
-  }
+  const deadline = contest.deadline ? new Date(contest.deadline) : null;
+  const now = new Date();
+  const isEnded = deadline && deadline < now;
 
-  const deadline = new Date(contest.deadline);
-  const ended = deadline.getTime() < Date.now();
+  const handleRegisterClick = () => {
+    if (isEnded) {
+      Swal.fire({
+        icon: "info",
+        title: "Contest ended",
+        text: "You can no longer join this contest.",
+        background: "#020617",
+        color: "#e5e7eb",
+      });
+      return;
+    }
+
+    // Payment page e navigate করছি; state এ contest পাঠাচ্ছি
+    navigate(`/payment/${contest._id}`, {
+      state: { contest },
+    });
+  };
 
   return (
-    <section className="pt-6 pb-10 max-w-4xl mx-auto">
-      <div className="rounded-3xl overflow-hidden border border-slate-800 bg-slate-950/80">
-        <div className="h-56 w-full overflow-hidden">
+    <section className="py-8 space-y-6">
+      {/* Banner */}
+      <div className="rounded-3xl overflow-hidden border border-slate-800 bg-slate-900/60">
+        <div className="h-64 w-full overflow-hidden">
           <img
             src={contest.image}
             alt={contest.name}
             className="h-full w-full object-cover"
           />
         </div>
-
-        <div className="p-4 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="p-6 space-y-3">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold text-slate-50">
-                {contest.name}
-              </h1>
-              <p className="text-xs text-slate-400">
-                Category:{" "}
-                <span className="capitalize">
-                  {contest.contestType?.replace("-", " ")}
-                </span>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-indigo-300">
+                {contest.contestType || "Creative contest"}
               </p>
+              <h1 className="text-2xl font-semibold">{contest.name}</h1>
             </div>
-
-            <div className="text-right text-xs text-slate-300 space-y-1">
-              <p>
-                Participants:{" "}
-                <span className="text-slate-50">
-                  {contest.participantsCount || 0}
-                </span>
-              </p>
-              <p>
-                Entry fee:{" "}
-                <span className="text-indigo-300 font-semibold">
-                  ${contest.price?.toFixed(2)}
-                </span>
-              </p>
-              <p>
-                Prize money:{" "}
-                <span className="text-emerald-300 font-semibold">
-                  ${contest.prizeMoney?.toFixed(2)}
-                </span>
-              </p>
+            <div className="flex flex-col items-end gap-1 text-xs">
+              <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-200">
+                Entry: ${contest.price}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-semibold">
+                Prize: ${contest.prizeMoney}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-200">
+                Participants: {contest.participantsCount || 0}
+              </span>
             </div>
           </div>
 
-          {/* Deadline / status */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-            <div>
-              <p className="text-slate-400">
-                Deadline:{" "}
-                <span className="text-slate-100">
-                  {deadline.toLocaleString()}
-                </span>
-              </p>
-              <p className="text-slate-400">
-                Status:{" "}
-                <span
-                  className={`font-semibold ${
-                    ended ? "text-red-400" : "text-emerald-300"
-                  }`}
-                >
-                  {ended ? "Contest Ended" : "Running"}
-                </span>
-              </p>
-            </div>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            {contest.description}
+          </p>
 
-            {contest.winner?.name && (
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-700">
-                  {contest.winner.photoURL ? (
-                    <img
-                      src={contest.winner.photoURL}
-                      alt={contest.winner.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center bg-slate-800 text-xs">
-                      🏆
-                    </div>
-                  )}
-                </div>
-                <div className="text-xs text-slate-300">
-                  <p className="font-semibold">Winner</p>
-                  <p>{contest.winner.name}</p>
-                </div>
-              </div>
-            )}
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            {contest.tags?.map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-200"
+              >
+                #{tag}
+              </span>
+            ))}
           </div>
+        </div>
+      </div>
 
-          {/* Description */}
-          <div className="border-t border-slate-800 pt-4 space-y-3 text-sm text-slate-200">
-            <div>
-              <h2 className="font-semibold text-slate-50 mb-1">
-                Contest Description
-              </h2>
-              <p className="text-slate-300 whitespace-pre-line">
-                {contest.description}
-              </p>
-            </div>
+      {/* Task + deadline + CTA */}
+      <div className="grid gap-6 md:grid-cols-[2fr,1.2fr]">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-3 text-sm">
+          <h2 className="text-base font-semibold">Task instructions</h2>
+          <p className="text-slate-300 whitespace-pre-line">
+            {contest.taskInstructions}
+          </p>
+        </div>
 
-            <div>
-              <h2 className="font-semibold text-slate-50 mb-1">
-                Task Instructions
-              </h2>
-              <p className="text-slate-300 whitespace-pre-line">
-                {contest.taskInstructions}
-              </p>
-            </div>
-          </div>
-
-          {/* Register button */}
-          <div className="pt-2 flex justify-end">
-            <button
-              type="button"
-              disabled={ended}
-              className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                ended
-                  ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                  : "bg-indigo-500 hover:bg-indigo-600 text-slate-950"
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm space-y-2">
+            <p className="text-[11px] text-slate-400 uppercase tracking-[0.16em]">
+              Deadline
+            </p>
+            <p className="text-slate-100 font-semibold">
+              {deadline ? deadline.toLocaleString() : "No deadline set"}
+            </p>
+            <p
+              className={`text-xs ${
+                isEnded ? "text-red-400" : "text-emerald-300"
               }`}
             >
-              {ended ? "Contest Ended" : "Register & Pay"}
-            </button>
+              {isEnded ? "Contest ended" : "You can still join this contest"}
+            </p>
           </div>
+
+          <button
+            onClick={handleRegisterClick}
+            disabled={isEnded}
+            className={`w-full rounded-full py-2.5 text-sm font-semibold shadow-sm transition ${
+              isEnded
+                ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                : "bg-indigo-500 text-slate-950 hover:bg-indigo-600"
+            }`}
+          >
+            {isEnded ? "Contest ended" : `Register & Pay $${contest.price}`}
+          </button>
         </div>
       </div>
     </section>

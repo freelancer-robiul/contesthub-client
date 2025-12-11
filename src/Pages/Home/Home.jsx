@@ -1,17 +1,16 @@
 // src/Pages/Home/Home.jsx
 import Banner from "./Banner";
-import ExtraSection from "./ExtraSection";
 import PopularContests from "./PopularContests";
 import WinnerSection from "./WinnerSection";
+import ExtraSection from "./ExtraSection";
 
 const Home = () => {
   return (
-    <div className="pt-6 pb-10">
+    <div className="mt-2 space-y-6">
       <Banner />
       <PopularContests />
       <WinnerSection />
       <ExtraSection />
-      {/* later: Winners section + Extra section */}
     </div>
   );
 };

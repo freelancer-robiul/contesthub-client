@@ -1,118 +1,110 @@
 // src/Pages/Auth/Login.jsx
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { api } from "../../api/axios";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useState } from "react";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+
+import { auth } from "../../firebase/firebase.config";
 import { useAuth } from "../../context/AuthContext";
-
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { firebaseApp } from "../../firebase/firebase.config";
-
-const auth = getAuth(firebaseApp);
-const provider = new GoogleAuthProvider();
+import api from "../../api/axios"; // তোমার axios instance
+// চাইলে react-hot-toast বা sweetalert2 use করতে পারো
+// import { toast } from "react-hot-toast";
 
 const Login = () => {
-  const [authError, setAuthError] = useState("");
+  const { register, handleSubmit, formState } = useForm();
+  const { errors } = formState;
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [serverError, setServerError] = useState("");
+
   const from = location.state?.from?.pathname || "/";
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  // ---------------------------
-  // EMAIL / PASSWORD → BACKEND
-  // ---------------------------
+  // 🟣 Email + password login
   const onSubmit = async (data) => {
-    setAuthError("");
+    setServerError("");
+
     try {
-      const res = await api.post("/auth/login", data);
-      // backend JWT + user
-      login(res.data.user, res.data.token);
+      const res = await api.post("/auth/login", {
+        email: data.email,
+        password: data.password,
+      });
+
+      const { user, token } = res.data;
+      login(user, token);
+
+      // toast.success("Login successful");
       navigate(from, { replace: true });
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        "Login failed. Please check your credentials.";
-      setAuthError(msg);
+      console.error(err);
+      setServerError(
+        err.response?.data?.message || "Login failed. Please try again."
+      );
+      // toast.error("Login failed");
     }
   };
 
-  // ---------------------------
-  // GOOGLE SIGN-IN → PURE FIREBASE
-  // ---------------------------
-  const handleGoogleSignIn = async () => {
-    setAuthError("");
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
+  // 🟡 Google login handler
+  const handleGoogleLogin = async () => {
+    setServerError("");
 
-      // Firebase থেকে পাওয়া ডাটাকে আমাদের AuthContext এর format এ convert করি
-      const userData = {
-        _id: firebaseUser.uid,
-        name: firebaseUser.displayName || firebaseUser.email?.split("@")[0],
-        email: firebaseUser.email,
-        photoURL: firebaseUser.photoURL,
-        role: "user", // default – চাইলে পরে backend দিয়ে update করতে পারো
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      const gUser = result.user;
+
+      const payload = {
+        name: gUser.displayName,
+        email: gUser.email,
+        photoURL: gUser.photoURL,
       };
 
-      // এখানে আমরা backend JWT ব্যবহার না করে,
-      // একটা dummy token string ব্যবহার করছি শুধু লোকাল storage consistency এর জন্য।
-      const dummyToken = "firebase-google-token";
+      const res = await api.post("/auth/google-login", payload);
 
-      login(userData, dummyToken);
+      const { user, token } = res.data;
+      login(user, token);
+
+      // toast.success("Logged in with Google");
       navigate(from, { replace: true });
     } catch (err) {
-      console.error("Google sign-in error:", err);
-      setAuthError("Google sign-in failed. Please try again.");
+      console.error("Google login failed:", err);
+      setServerError("Google sign-in failed. Please try again.");
+      // toast.error("Google sign-in failed");
     }
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950/80 p-6 shadow-xl">
-        <h1 className="text-2xl font-semibold text-slate-50 mb-1 text-center">
+    <div className="flex items-center justify-center py-10">
+      <div className="w-full max-w-md bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <h2 className="text-2xl font-semibold mb-1 text-center">
           Welcome back
-        </h1>
-        <p className="text-sm text-slate-400 text-center mb-5">
+        </h2>
+        <p className="text-sm text-slate-400 mb-4 text-center">
           Log in to continue joining contests and tracking your progress.
         </p>
 
-        {authError && (
-          <div className="mb-3 rounded-xl bg-red-500/10 border border-red-500/60 px-3 py-2 text-xs text-red-200">
-            {authError}
+        {serverError && (
+          <div className="mb-4 rounded-xl border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+            {serverError}
           </div>
         )}
 
-        {/* EMAIL/PASSWORD LOGIN */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-sm">
+        {/* Email / password form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-xs text-slate-400 mb-1">
               Email address
             </label>
             <input
               type="email"
-              {...register("email", {
-                required: "Email is required",
-                pattern: {
-                  value: /\S+@\S+\.\S+/,
-                  message: "Please enter a valid email address",
-                },
-              })}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="you@example.com"
+              {...register("email", { required: "Email is required" })}
             />
             {errors.email && (
-              <p className="mt-1 text-xs text-red-400">
+              <p className="text-xs text-red-400 mt-1">
                 {errors.email.message}
               </p>
             )}
@@ -124,18 +116,12 @@ const Login = () => {
             </label>
             <input
               type="password"
-              {...register("password", {
-                required: "Password is required",
-                minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                },
-              })}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-indigo-400"
+              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="••••••••"
+              {...register("password", { required: "Password is required" })}
             />
             {errors.password && (
-              <p className="mt-1 text-xs text-red-400">
+              <p className="text-xs text-red-400 mt-1">
                 {errors.password.message}
               </p>
             )}
@@ -143,39 +129,37 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-full bg-indigo-500 hover:bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-slate-950 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full mt-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 transition text-sm font-semibold py-2"
           >
-            {isSubmitting ? "Logging in..." : "Log in"}
+            Log in
           </button>
         </form>
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-4">
           <div className="h-px flex-1 bg-slate-800" />
-          <span className="text-[11px] text-slate-500 uppercase tracking-wide">
-            or
+          <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+            Or
           </span>
           <div className="h-px flex-1 bg-slate-800" />
         </div>
 
-        {/* GOOGLE SIGN-IN BUTTON */}
+        {/* Google button */}
         <button
           type="button"
-          onClick={handleGoogleSignIn}
-          className="w-full rounded-full border border-slate-700 bg-slate-900/60 hover:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-100 flex items-center justify-center gap-2 transition"
+          onClick={handleGoogleLogin}
+          className="w-full rounded-xl border border-slate-700 bg-slate-950 hover:bg-slate-900 transition text-sm font-medium py-2 flex items-center justify-center gap-2"
         >
-          <span className="text-lg">🔐</span>
+          <span role="img" aria-label="lock">
+            🔐
+          </span>
           <span>Continue with Google</span>
         </button>
 
         <p className="mt-4 text-xs text-slate-400 text-center">
           Don&apos;t have an account?{" "}
-          <Link
-            to="/register"
-            className="text-indigo-400 hover:text-indigo-300 font-medium"
-          >
-            Create one
+          <Link to="/register" className="text-indigo-400 hover:underline">
+            Sign up
           </Link>
         </p>
       </div>

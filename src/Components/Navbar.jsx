@@ -25,6 +25,20 @@ const Navbar = () => {
     navigate("/");
   };
 
+  // role অনুযায়ী dashboard route
+  const getDashboardPath = () => {
+    if (!user) return "/login";
+    if (user.role === "admin") return "/admin-dashboard/users";
+    if (user.role === "creator") return "/creator-dashboard";
+    return "/dashboard";
+  };
+
+  // dropdown থেকে dashboard এ যাওয়ার জন্য
+  const goToDashboard = () => {
+    setOpen(false);
+    navigate(getDashboardPath());
+  };
+
   return (
     <header
       className={
@@ -64,10 +78,18 @@ const Navbar = () => {
           <NavLink to="/about" className={linkClass}>
             About
           </NavLink>
+
+          {/* 🔹 সবসময় উপরে Dashboard link (শুধু logged-in হলে) */}
+          {user && (
+            <NavLink to={getDashboardPath()} className={linkClass}>
+              Dashboard
+            </NavLink>
+          )}
         </div>
 
         {/* Right: theme toggle + auth */}
         <div className="flex items-center gap-2 relative">
+          {/* Theme toggle */}
           <button
             type="button"
             onClick={toggleTheme}
@@ -81,6 +103,7 @@ const Navbar = () => {
             {theme === "dark" ? "🌙" : "☀️"}
           </button>
 
+          {/* Auth */}
           {user ? (
             <div className="relative">
               <button
@@ -96,7 +119,8 @@ const Navbar = () => {
               </button>
 
               {open && (
-                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-800 bg-slate-950/95 text-xs shadow-lg z-20">
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-800 bg-slate-950/95 text-xs shadow-lg z-20">
+                  {/* Header */}
                   <div className="px-3 py-2 border-b border-slate-800">
                     <p className="font-semibold text-slate-50 truncate">
                       {user.name}
@@ -104,16 +128,26 @@ const Navbar = () => {
                     <p className="text-[10px] text-slate-400 truncate">
                       {user.email}
                     </p>
+                    {user.role && (
+                      <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] capitalize bg-slate-800 text-slate-200">
+                        {user.role}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Dashboard link – role ভিত্তিক */}
                   <button
-                    onClick={() => {
-                      setOpen(false);
-                      navigate("/dashboard");
-                    }}
+                    onClick={goToDashboard}
                     className="w-full text-left px-3 py-2 hover:bg-slate-900"
                   >
-                    Dashboard
+                    {user.role === "admin"
+                      ? "Admin dashboard"
+                      : user.role === "creator"
+                      ? "Creator dashboard"
+                      : "My dashboard"}
                   </button>
+
+                  {/* Logout */}
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-3 py-2 text-red-300 hover:bg-slate-900"

@@ -1,100 +1,156 @@
 // src/Pages/Dashboard/User/MyWinningContests.jsx
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../../api/axios";
+import { format } from "date-fns";
 
-const dummyWins = [
-  {
-    id: "logo-sprint",
-    contestName: "Fintech Logo Design Sprint",
-    prize: 150,
-    position: "1st place",
-    date: "2025-01-20T18:00:00Z",
-  },
-  {
-    id: "indie-review",
-    contestName: "Indie Game Review Contest",
-    prize: 100,
-    position: "1st place",
-    date: "2024-12-05T18:00:00Z",
-  },
-];
-
-const formatDate = (isoString) => {
-  const d = new Date(isoString);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+const fetchMyWinningContests = async () => {
+  const res = await api.get("/contests/my-winnings");
+  return res.data; // array of contests
 };
 
 const MyWinningContests = () => {
-  const totalPrize = dummyWins.reduce((sum, win) => sum + win.prize, 0);
+  const {
+    data: contests = [],
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: ["my-winning-contests"],
+    queryFn: fetchMyWinningContests,
+  });
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-50 mb-1">
-        My Winning Contests
-      </h2>
-      <p className="text-xs text-slate-400 mb-4">
-        Celebrate your best performances and track the prize money you have
-        earned.
-      </p>
-
-      {/* Highlight card */}
-      <div className="mb-4 rounded-2xl border border-emerald-600/60 bg-emerald-500/5 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <section className="space-y-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <div>
-          <p className="text-xs uppercase tracking-wide text-emerald-300">
-            Congratulations!
-          </p>
-          <p className="text-sm text-slate-100">
-            You&apos;ve won{" "}
-            <span className="font-semibold">{dummyWins.length}</span> contest so
-            far.
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-slate-400">Total prize money</p>
-          <p className="text-xl font-bold text-emerald-300">
-            ${totalPrize.toFixed(0)}
+          <h2 className="text-lg font-semibold text-slate-50">
+            My winning contests
+          </h2>
+          <p className="text-xs text-slate-400">
+            All contests where you have been announced as the official winner.
+            Keep collecting more trophies and climb the leaderboard.
           </p>
         </div>
+        {isFetching && (
+          <p className="text-[11px] text-slate-400">Refreshing...</p>
+        )}
       </div>
 
-      {/* Cards list */}
-      {dummyWins.length === 0 ? (
-        <p className="text-sm text-slate-300">
-          You haven&apos;t won a contest yet. Keep participating, your first win
-          is on the way.
-        </p>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {dummyWins.map((win) => (
-            <article
-              key={win.id}
-              className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4"
-            >
-              <p className="text-xs text-slate-400 mb-1">
-                {formatDate(win.date)}
-              </p>
-              <h3 className="text-sm font-semibold text-slate-50 mb-1">
-                {win.contestName}
-              </h3>
-              <p className="text-xs text-slate-300 mb-2">
-                Result:{" "}
-                <span className="font-semibold text-emerald-300">
-                  {win.position}
-                </span>
-              </p>
-              <p className="text-xs text-slate-300">
-                Prize earned:{" "}
-                <span className="font-semibold text-amber-300">
-                  ${win.prize}
-                </span>
-              </p>
-            </article>
-          ))}
+      {isLoading && (
+        <div className="py-6 text-sm text-slate-300">
+          Loading your winning contests...
         </div>
       )}
-    </div>
+
+      {isError && (
+        <div className="py-6 text-sm text-red-300">
+          Failed to load winning contests: {error?.message}
+        </div>
+      )}
+
+      {!isLoading && !isError && contests.length === 0 && (
+        <div className="py-8 text-sm text-slate-400">
+          You haven&apos;t won any contests yet. Keep participating and your
+          wins will appear here with full celebration!
+        </div>
+      )}
+
+      {!isLoading && !isError && contests.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {contests.map((contest) => {
+            const deadline = contest.deadline
+              ? new Date(contest.deadline)
+              : null;
+
+            return (
+              <div
+                key={contest._id}
+                className="relative overflow-hidden rounded-3xl border border-emerald-500/40 bg-slate-950/90"
+              >
+                {/* subtle gradient ribbon */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex gap-3 p-4 border-b border-slate-800/80">
+                  <div className="relative">
+                    <img
+                      src={
+                        contest.image ||
+                        "https://i.ibb.co/3R1YgQZ/placeholder.jpg"
+                      }
+                      alt={contest.name}
+                      className="w-16 h-16 rounded-2xl object-cover border border-slate-700"
+                    />
+                    <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-xs font-bold shadow-lg">
+                      🏆
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <p className="text-xs text-emerald-300 font-semibold mb-1">
+                      You are the winner!
+                    </p>
+                    <h3 className="text-sm font-semibold text-slate-50 line-clamp-2">
+                      {contest.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 capitalize mt-1">
+                      {contest.contestType?.replace("-", " ") || "Contest"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-4 py-3 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] text-slate-400">Prize money</p>
+                      <p className="text-base font-semibold text-emerald-300">
+                        ৳{Number(contest.prizeMoney || 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-slate-400">
+                        Total participants
+                      </p>
+                      <p className="text-base font-semibold text-slate-100">
+                        {contest.participantsCount || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div>
+                      <p>Deadline</p>
+                      <p className="text-slate-200">
+                        {deadline
+                          ? format(deadline, "d MMM yyyy, h:mm a")
+                          : "Not set"}
+                      </p>
+                    </div>
+                    {contest.winner?.announcedAt && (
+                      <div className="text-right">
+                        <p>Winner announced</p>
+                        <p className="text-slate-200">
+                          {format(
+                            new Date(contest.winner.announcedAt),
+                            "d MMM yyyy"
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {contest.description && (
+                    <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">
+                      {contest.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 };
 

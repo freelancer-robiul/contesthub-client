@@ -12,7 +12,7 @@ const fetchContests = async (status) => {
 };
 
 const ManageContests = () => {
-  const [statusFilter, setStatusFilter] = useState("pending"); // default pending
+  const [statusFilter, setStatusFilter] = useState("pending");
   const queryClient = useQueryClient();
 
   const {
@@ -36,12 +36,8 @@ const ManageContests = () => {
       },
       onSuccess: (data) => {
         toast.success(data?.message || "Updated successfully");
-        queryClient.invalidateQueries({
-          queryKey: ["admin-contests"],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["contests"],
-        });
+        queryClient.invalidateQueries({ queryKey: ["admin-contests"] });
+        queryClient.invalidateQueries({ queryKey: ["contests"] });
       },
       onError: (err) => {
         const msg =
@@ -87,8 +83,8 @@ const ManageContests = () => {
             Manage contests
           </h2>
           <p className="text-xs text-slate-400">
-            Review pending contests, approve or reject them, or remove
-            inappropriate contests.
+            Review new contests, approve or reject them and remove any
+            inappropriate content.
           </p>
         </div>
 

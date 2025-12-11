@@ -1,67 +1,102 @@
 // src/Pages/Contests/AllContests.jsx
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../api/axios";
 import { Link } from "react-router-dom";
+import api from "../../api/axios";
 
 const TABS = [
-  { id: "all", label: "All" },
-  { id: "image-design", label: "Image Design" },
-  { id: "article-writing", label: "Article Writing" },
-  { id: "business-idea", label: "Business Ideas" },
-  { id: "game-review", label: "Game Reviews" },
+  { label: "All", value: "all" },
+  { label: "Logo Design", value: "Logo Design" },
+  { label: "Article Writing", value: "Article Writing" },
+  { label: "Business Ideas", value: "Business Ideas" },
+  { label: "Game Review", value: "Game Review" },
+  { label: "Other", value: "Other" },
 ];
 
-const fetchContests = async ({ queryKey }) => {
-  const [_key, { tab }] = queryKey;
-
-  const params = {};
-  if (tab && tab !== "all") {
-    params.type = tab;
-  }
-  // status approved by default in backend
-
-  const res = await api.get("/contests", { params });
-  return res.data;
-};
-
 const AllContests = () => {
-  const [activeTab, setActiveTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [type, setType] = useState("all");
+  const [page, setPage] = useState(1);
 
-  const {
-    data: contests = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["contests", { tab: activeTab }],
-    queryFn: fetchContests,
+  const limit = 10;
+
+  const { data, isLoading, isError, error, isFetching } = useQuery({
+    queryKey: ["contests", { page, type, debouncedSearch }],
+    queryFn: async () => {
+      const res = await api.get("/contests", {
+        params: {
+          page,
+          limit,
+          type,
+          search: debouncedSearch,
+          status: "approved",
+        },
+      });
+      return res.data;
+    },
     keepPreviousData: true,
   });
 
+  const contests = data?.contests || [];
+  const totalPages = data?.totalPages || 1;
+  const totalItems = data?.totalItems || 0;
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setPage(1);
+    setDebouncedSearch(search.trim());
+  };
+
+  const handleTabChange = (value) => {
+    setType(value);
+    setPage(1);
+  };
+
   return (
-    <section className="pt-6 pb-10">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <section className="space-y-6 pt-4">
+      {/* Header */}
+      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-50">
-            All Contests
-          </h1>
-          <p className="text-sm text-slate-400">
-            Browse every approved contest and find your next challenge.
+          <h1 className="text-2xl font-semibold">All Contests</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Browse all live and upcoming contests. Use filters to find what
+            matches your skills.
           </p>
         </div>
-      </div>
+
+        {/* Search */}
+        <form
+          onSubmit={handleSearchSubmit}
+          className="w-full md:w-80 flex items-center gap-2"
+        >
+          <input
+            type="text"
+            placeholder="Search by name or tag..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 rounded-full bg-slate-900 border border-slate-700 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-full bg-indigo-500 text-slate-950 text-sm font-semibold hover:bg-indigo-600"
+          >
+            Search
+          </button>
+        </form>
+      </header>
 
       {/* Tabs */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
         {TABS.map((tab) => (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            key={tab.value}
+            type="button"
+            onClick={() => handleTabChange(tab.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-              activeTab === tab.id
-                ? "bg-indigo-500 text-slate-950 border-indigo-500"
-                : "bg-slate-900/70 border-slate-700 text-slate-200 hover:bg-slate-800"
+              type === tab.value
+                ? "bg-indigo-500 border-indigo-500 text-slate-950"
+                : "border-slate-700 text-slate-200 hover:bg-slate-800"
             }`}
           >
             {tab.label}
@@ -69,84 +104,165 @@ const AllContests = () => {
         ))}
       </div>
 
-      {/* Content */}
+      {/* State messages */}
       {isLoading && (
-        <div className="py-10 text-center text-slate-300">
+        <div className="py-10 text-center text-sm text-slate-400">
           Loading contests...
         </div>
       )}
 
       {isError && (
-        <div className="py-10 text-center text-red-300 text-sm">
-          Failed to load contests: {error.message}
+        <div className="py-10 text-center text-sm text-red-400">
+          Failed to load contests: {error?.message || "Something went wrong"}
         </div>
       )}
 
       {!isLoading && !isError && contests.length === 0 && (
-        <div className="py-10 text-center text-slate-400 text-sm">
-          No contests found in this category.
+        <div className="py-10 text-center text-sm text-slate-400">
+          No contests found for this filter.
         </div>
       )}
 
+      {/* Grid */}
       {!isLoading && !isError && contests.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {contests.map((contest) => (
-            <article
-              key={contest._id}
-              className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden flex flex-col"
-            >
-              <div className="h-40 w-full overflow-hidden">
-                <img
-                  src={contest.image}
-                  alt={contest.name}
-                  className="h-full w-full object-cover hover:scale-105 transition-transform"
-                />
-              </div>
-
-              <div className="p-3 flex-1 flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base font-semibold text-slate-50 line-clamp-1">
-                    {contest.name}
-                  </h2>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-900 text-slate-300 capitalize">
-                    {contest.contestType?.replace("-", " ")}
-                  </span>
+        <>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {contests.map((contest) => (
+              <article
+                key={contest._id}
+                className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex flex-col"
+              >
+                <div className="h-40 overflow-hidden">
+                  <img
+                    src={contest.image}
+                    alt={contest.name}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
                 </div>
-
-                <p className="text-xs text-slate-400 line-clamp-3">
-                  {contest.description?.slice(0, 120)}
-                  {contest.description &&
-                    contest.description.length > 120 &&
-                    "..."}
-                </p>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                  <span>
-                    Participants:{" "}
-                    <span className="text-slate-100">
-                      {contest.participantsCount || 0}
+                <div className="flex-1 flex flex-col p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-semibold text-sm line-clamp-2">
+                      {contest.name}
+                    </h2>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-200">
+                      {contest.contestType || "Contest"}
                     </span>
-                  </span>
-                  <span>
-                    Entry fee:{" "}
-                    <span className="text-indigo-300">
-                      ${contest.price?.toFixed(2)}
-                    </span>
-                  </span>
-                </div>
+                  </div>
 
-                <div className="mt-3 flex justify-end">
-                  <Link
-                    to={`/contests/${contest._id}`}
-                    className="rounded-full bg-indigo-500 hover:bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-slate-950"
-                  >
-                    View details
-                  </Link>
+                  <p className="text-xs text-slate-400 line-clamp-3">
+                    {contest.description?.slice(0, 110)}
+                    {contest.description &&
+                      contest.description.length > 110 &&
+                      "..."}
+                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-300 pt-1">
+                    <span>
+                      Entry fee:{" "}
+                      <span className="font-semibold text-amber-300">
+                        ${contest.price}
+                      </span>
+                    </span>
+                    <span>
+                      Prize:{" "}
+                      <span className="font-semibold text-emerald-300">
+                        ${contest.prizeMoney}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>
+                      Participants:{" "}
+                      <span className="font-semibold text-slate-100">
+                        {contest.participantsCount || 0}
+                      </span>
+                    </span>
+                    <span>
+                      Deadline:{" "}
+                      <span className="font-semibold">
+                        {contest.deadline
+                          ? new Date(contest.deadline).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="pt-2 flex justify-between items-center">
+                    <div className="flex flex-wrap gap-1">
+                      {contest.tags?.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    <Link
+                      to={`/contests/${contest._id}`}
+                      className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500 text-slate-950 hover:bg-indigo-600"
+                    >
+                      Details
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between mt-6 text-xs text-slate-400">
+            <div>
+              Showing{" "}
+              <span className="font-semibold">{(page - 1) * limit + 1}</span> –{" "}
+              <span className="font-semibold">
+                {Math.min(page * limit, totalItems)}
+              </span>{" "}
+              of <span className="font-semibold">{totalItems}</span> contests
+              {isFetching && (
+                <span className="ml-2 text-[10px] text-slate-500">
+                  (updating…)
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`px-3 py-1 rounded-full border text-xs ${
+                  page === 1
+                    ? "border-slate-700 text-slate-600 cursor-not-allowed"
+                    : "border-slate-600 text-slate-100 hover:bg-slate-800"
+                }`}
+              >
+                Previous
+              </button>
+              <span className="text-[11px]">
+                Page{" "}
+                <span className="font-semibold text-slate-100">{page}</span> of{" "}
+                <span className="font-semibold text-slate-100">
+                  {totalPages}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
+                disabled={page === totalPages}
+                className={`px-3 py-1 rounded-full border text-xs ${
+                  page === totalPages
+                    ? "border-slate-700 text-slate-600 cursor-not-allowed"
+                    : "border-slate-600 text-slate-100 hover:bg-slate-800"
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </section>
   );

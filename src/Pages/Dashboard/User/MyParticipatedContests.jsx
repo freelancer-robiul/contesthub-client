@@ -1,102 +1,118 @@
 // src/Pages/Dashboard/User/MyParticipatedContests.jsx
-import { useMemo } from "react";
-
-const dummyParticipated = [
-  {
-    id: "logo-sprint",
-    name: "Fintech Logo Design Sprint",
-    deadline: "2025-12-31T18:00:00Z",
-    paymentStatus: "paid",
-    amount: 10,
-  },
-  {
-    id: "ai-article",
-    name: "AI in Education Article Challenge",
-    deadline: "2025-11-30T18:00:00Z",
-    paymentStatus: "paid",
-    amount: 8,
-  },
-  {
-    id: "indie-review",
-    name: "Indie Game Review Contest",
-    deadline: "2025-10-15T18:00:00Z",
-    paymentStatus: "paid",
-    amount: 5,
-  },
-  {
-    id: "startup-pitch",
-    name: "One-Page Startup Pitch",
-    deadline: "2025-09-05T18:00:00Z",
-    paymentStatus: "refunded",
-    amount: 6,
-  },
-];
-
-// helper to format date
-const formatDate = (isoString) => {
-  const d = new Date(isoString);
-  return d.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-};
+import { useQuery } from "@tanstack/react-query";
+import api from "../../../api/axios";
 
 const MyParticipatedContests = () => {
-  // sort by upcoming deadline (nearest first)
-  const sorted = useMemo(
-    () =>
-      [...dummyParticipated].sort(
-        (a, b) => new Date(a.deadline) - new Date(b.deadline)
-      ),
-    []
-  );
+  const {
+    data: participations,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["my-participations"],
+    queryFn: async () => {
+      const res = await api.get("/payments/my-participations");
+      return res.data;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="py-10 text-center text-slate-300">
+        Loading your participated contests...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="py-10 text-center text-red-400">
+        Failed to load your participations.
+      </div>
+    );
+  }
+
+  if (!participations || participations.length === 0) {
+    return (
+      <div className="py-10 text-center text-slate-400 text-sm">
+        You haven&apos;t joined any contests yet.
+      </div>
+    );
+  }
+
+  const sorted = participations.slice().sort((a, b) => {
+    const da = a.contest?.deadline ? new Date(a.contest.deadline) : new Date(0);
+    const db = b.contest?.deadline ? new Date(b.contest.deadline) : new Date(0);
+    return da - db;
+  });
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-50 mb-1">
-        My Participated Contests
-      </h2>
-      <p className="text-xs text-slate-400 mb-4">
-        These contests are sorted by their upcoming deadlines.
-      </p>
+    <section className="space-y-4">
+      <div>
+        <h1 className="text-xl font-semibold">My Participated Contests</h1>
+        <p className="text-sm text-slate-400">
+          All contests you have joined, sorted by upcoming deadline.
+        </p>
+      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs sm:text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 text-slate-400">
-              <th className="py-2 pr-3">Contest</th>
-              <th className="py-2 pr-3">Deadline</th>
-              <th className="py-2 pr-3">Payment</th>
-              <th className="py-2 pr-3">Entry Fee</th>
+      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-900 text-slate-300">
+            <tr>
+              <th className="text-left px-4 py-3">Contest</th>
+              <th className="text-left px-4 py-3">Type</th>
+              <th className="text-left px-4 py-3">Deadline</th>
+              <th className="text-right px-4 py-3">Paid</th>
+              <th className="text-left px-4 py-3">Status</th>
+              <th className="text-left px-4 py-3">Joined at</th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((c) => (
-              <tr key={c.id} className="border-b border-slate-900/60">
-                <td className="py-2 pr-3 text-slate-100">{c.name}</td>
-                <td className="py-2 pr-3 text-slate-300">
-                  {formatDate(c.deadline)}
+            {sorted.map((p) => (
+              <tr
+                key={p._id}
+                className="border-t border-slate-800 hover:bg-slate-900/70"
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-14 rounded-md overflow-hidden bg-slate-800">
+                      <img
+                        src={p.contest?.image}
+                        alt={p.contest?.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-100">
+                        {p.contest?.name}
+                      </p>
+                    </div>
+                  </div>
                 </td>
-                <td className="py-2 pr-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      c.paymentStatus === "paid"
-                        ? "bg-emerald-500/10 text-emerald-300"
-                        : c.paymentStatus === "refunded"
-                        ? "bg-yellow-500/10 text-yellow-300"
-                        : "bg-red-500/10 text-red-300"
-                    }`}
-                  >
-                    {c.paymentStatus.toUpperCase()}
+                <td className="px-4 py-3 text-slate-300">
+                  {p.contest?.contestType}
+                </td>
+                <td className="px-4 py-3 text-slate-300">
+                  {p.contest?.deadline
+                    ? new Date(p.contest.deadline).toLocaleString()
+                    : "N/A"}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-slate-100">
+                  ${p.amountPaid}
+                </td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] bg-emerald-500/15 text-emerald-300 border border-emerald-600/40">
+                    {p.status}
                   </span>
                 </td>
-                <td className="py-2 pr-3 text-slate-300">${c.amount}</td>
+                <td className="px-4 py-3 text-slate-300">
+                  {new Date(p.createdAt).toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 };
 

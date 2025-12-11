@@ -5,25 +5,31 @@ import Footer from "./Components/Footer";
 import Home from "./Pages/Home/Home";
 import AllContests from "./Pages/Contests/AllContests";
 import ContestDetails from "./Pages/Contests/ContestDetails";
+import PaymentPage from "./Pages/Payments/PaymentPage";
 import NotFound from "./Pages/Error/NotFound";
+
 import PrivateRoute from "./Routes/PrivateRoute";
 import AdminRoute from "./Routes/AdminRoute";
 
+// USER DASHBOARD
 import UserDashboardLayout from "./Layouts/UserDashboardLayout";
 import MyParticipatedContests from "./Pages/Dashboard/User/MyParticipatedContests";
 import MyWinningContests from "./Pages/Dashboard/User/MyWinningContests";
 import MyProfile from "./Pages/Dashboard/User/MyProfile";
 
+// CREATOR DASHBOARD
 import CreatorDashboardLayout from "./Layouts/CreatorDashboardLayout";
 import AddContest from "./Pages/Dashboard/Creator/AddContest";
 import MyCreatedContests from "./Pages/Dashboard/Creator/MyCreatedContests";
 import CreatorSubmissions from "./Pages/Dashboard/Creator/CreatorSubmissions";
 import EditContest from "./Pages/Dashboard/Creator/EditContest";
 
+// ADMIN DASHBOARD
 import AdminDashboardLayout from "./Layouts/AdminDashboardLayout";
 import ManageUsers from "./Pages/Dashboard/Admin/ManageUsers";
 import ManageContests from "./Pages/Dashboard/Admin/ManageContests";
 
+// AUTH
 import Login from "./Pages/Auth/Login";
 import Register from "./Pages/Auth/Register";
 
@@ -46,6 +52,16 @@ function App() {
             element={
               <PrivateRoute>
                 <ContestDetails />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Payment (private) – contestId param ব্যবহার করছি */}
+          <Route
+            path="/payment/:contestId"
+            element={
+              <PrivateRoute>
+                <PaymentPage />
               </PrivateRoute>
             }
           />
@@ -85,7 +101,7 @@ function App() {
             <Route path="edit/:contestId" element={<EditContest />} />
           </Route>
 
-          {/* ADMIN DASHBOARD (admin private) */}
+          {/* ADMIN DASHBOARD (admin only) */}
           <Route
             path="/admin-dashboard"
             element={

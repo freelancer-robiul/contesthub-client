@@ -1,166 +1,151 @@
 // src/Pages/Home/PopularContests.jsx
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-
-// Temporary dummy data – later this will come from backend using TanStack Query
-const dummyPopularContests = [
-  {
-    id: "logo-sprint",
-    name: "Fintech Logo Design Sprint",
-    image:
-      "https://images.pexels.com/photos/3153207/pexels-photo-3153207.jpeg?auto=compress&cs=tinysrgb&w=800",
-    description:
-      "Design a modern, minimal logo for a next-generation fintech app that helps young professionals manage their savings with confidence.",
-    participantsCount: 82,
-  },
-  {
-    id: "ai-article",
-    name: "AI in Education Article Challenge",
-    image:
-      "https://images.pexels.com/photos/4144096/pexels-photo-4144096.jpeg?auto=compress&cs=tinysrgb&w=800",
-    description:
-      "Write a clear and engaging article that explains how artificial intelligence is transforming the way students learn and teachers teach.",
-    participantsCount: 71,
-  },
-  {
-    id: "indie-review",
-    name: "Indie Game Review Contest",
-    image:
-      "https://images.pexels.com/photos/3945683/pexels-photo-3945683.jpeg?auto=compress&cs=tinysrgb&w=800",
-    description:
-      "Share a detailed review of your favourite indie game. Focus on gameplay, story, art style and what makes the overall experience memorable.",
-    participantsCount: 64,
-  },
-  {
-    id: "startup-pitch",
-    name: "One-Page Startup Pitch",
-    image:
-      "https://images.pexels.com/photos/1181467/pexels-photo-1181467.jpeg?auto=compress&cs=tinysrgb&w=800",
-    description:
-      "Present a one-page business idea for a problem you see around you. Explain the solution, target audience and how you plan to grow.",
-    participantsCount: 53,
-  },
-  {
-    id: "poster-design",
-    name: "Movie Night Poster Design",
-    image:
-      "https://images.pexels.com/photos/799131/pexels-photo-799131.jpeg?auto=compress&cs=tinysrgb&w=800",
-    description:
-      "Create a bold and eye-catching poster for a campus movie night featuring classic sci-fi films. Make it social-media friendly.",
-    participantsCount: 47,
-  },
-];
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import api from "../../api/axios";
 
 const PopularContests = () => {
-  const navigate = useNavigate();
+  // React Query দিয়ে popular contests load করব
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["popular-contests"],
+    queryFn: async () => {
+      // backend: GET /api/v1/contests/popular -> সরাসরি array return করে
+      const res = await api.get("/contests/popular");
+      return res.data; // এটা একটা array
+    },
+  });
 
-  // TODO: replace with real auth (context) later
-  const user = null;
-  // const user = { _id: "123", name: "Demo User" };
+  // data যদি undefined হয় তাহলে empty array ধরি
+  const contests = Array.isArray(data) ? data : [];
 
-  // Ensure list is sorted by highest participation count
-  const sortedContests = useMemo(
-    () =>
-      [...dummyPopularContests].sort(
-        (a, b) => b.participantsCount - a.participantsCount
-      ),
-    []
-  );
+  if (isLoading) {
+    return (
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold mb-3">Popular Contests</h2>
+        <p className="text-sm text-slate-400">Loading popular contests...</p>
+      </section>
+    );
+  }
 
-  const handleDetailsClick = (id) => {
-    if (!user) {
-      // not logged in → go to login page
-      navigate("/login");
-      return;
-    }
-    // logged in → go to contest details page
-    navigate(`/contests/${id}`);
-  };
+  if (isError) {
+    return (
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold mb-3">Popular Contests</h2>
+        <p className="text-sm text-red-400">
+          Failed to load contests: {error?.message || "Something went wrong"}
+        </p>
+      </section>
+    );
+  }
 
-  const handleShowAll = () => {
-    navigate("/all-contests");
-  };
+  if (!contests.length) {
+    return (
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold mb-3">Popular Contests</h2>
+        <p className="text-sm text-slate-400">
+          No popular contests found yet. Create or join a contest to get
+          started.
+        </p>
+      </section>
+    );
+  }
 
   return (
-    <section className="mt-10">
-      {/* Section header */}
-      <div className="flex items-end justify-between gap-3 mb-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-slate-50">
-            Popular Contests
-          </h2>
-          <p className="text-sm text-slate-400">
-            Top challenges ranked by participation.
-          </p>
-        </div>
-
-        <button
-          onClick={handleShowAll}
-          className="hidden sm:inline-flex items-center rounded-full border border-slate-700 px-4 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800/80 transition"
+    <section className="mt-10 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Popular Contests</h2>
+        <Link
+          to="/all-contests"
+          className="text-xs font-medium text-indigo-300 hover:text-indigo-200"
         >
-          Show all contests
-        </button>
+          Show all contests →
+        </Link>
       </div>
 
-      {/* Cards grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sortedContests.map((contest) => {
-          const shortDescription =
-            contest.description.length > 120
-              ? contest.description.slice(0, 120) + "..."
-              : contest.description;
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {contests.map((contest) => (
+          <article
+            key={contest._id}
+            className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex flex-col"
+          >
+            <div className="h-40 overflow-hidden">
+              <img
+                src={contest.image}
+                alt={contest.name}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
 
-          return (
-            <article
-              key={contest.id}
-              className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden shadow-sm hover:border-indigo-500/70 hover:shadow-indigo-500/20 transition"
-            >
-              <div className="h-40 w-full overflow-hidden">
-                <img
-                  src={contest.image}
-                  alt={contest.name}
-                  className="h-full w-full object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-
-              <div className="p-4 space-y-2">
-                <h3 className="text-sm font-semibold text-slate-50 line-clamp-2">
+            <div className="flex-1 flex flex-col p-4 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold text-sm line-clamp-2">
                   {contest.name}
                 </h3>
-
-                <p className="text-xs text-slate-400 min-h-[3rem]">
-                  {shortDescription}
-                </p>
-
-                <p className="text-xs font-medium text-indigo-300">
-                  Participants:{" "}
-                  <span className="font-semibold">
-                    {contest.participantsCount}
-                  </span>
-                </p>
-
-                <div className="pt-1 flex justify-between items-center">
-                  <button
-                    onClick={() => handleDetailsClick(contest.id)}
-                    className="text-xs font-medium rounded-full bg-slate-800 px-3 py-1.5 text-slate-50 hover:bg-indigo-500 hover:text-slate-950 transition"
-                  >
-                    Details
-                  </button>
-                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-200">
+                  {contest.contestType || "Contest"}
+                </span>
               </div>
-            </article>
-          );
-        })}
-      </div>
 
-      {/* Show all button for mobile */}
-      <div className="mt-5 sm:hidden">
-        <button
-          onClick={handleShowAll}
-          className="w-full inline-flex justify-center rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600 transition"
-        >
-          Show All Contests
-        </button>
+              <p className="text-xs text-slate-400 line-clamp-3">
+                {contest.description?.slice(0, 110)}
+                {contest.description &&
+                  contest.description.length > 110 &&
+                  "..."}
+              </p>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-300 pt-1">
+                <span>
+                  Entry fee:{" "}
+                  <span className="font-semibold text-amber-300">
+                    ${contest.price}
+                  </span>
+                </span>
+                <span>
+                  Prize:{" "}
+                  <span className="font-semibold text-emerald-300">
+                    ${contest.prizeMoney}
+                  </span>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>
+                  Participants:{" "}
+                  <span className="font-semibold text-slate-100">
+                    {contest.participantsCount || 0}
+                  </span>
+                </span>
+                <span>
+                  Deadline:{" "}
+                  <span className="font-semibold">
+                    {contest.deadline
+                      ? new Date(contest.deadline).toLocaleDateString()
+                      : "N/A"}
+                  </span>
+                </span>
+              </div>
+
+              <div className="pt-2 flex justify-between items-center">
+                <div className="flex flex-wrap gap-1">
+                  {contest.tags?.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+
+                <Link
+                  to={`/contests/${contest._id}`}
+                  className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500 text-slate-950 hover:bg-indigo-600"
+                >
+                  Details
+                </Link>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
